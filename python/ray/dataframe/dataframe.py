@@ -1283,14 +1283,7 @@ class DataFrame(object):
             self._row_partitions = new_rows
             self._col_partitions = _rebuild_cols.remote(self._row_partitions,
                                                         None, columns)
-            print("\n", ray.get(new_rows[0]))
-            try:
-                self._col_index['partition'][columns[-1]] = 0
-                self._col_index['index_within_partition'][columns[-1]] = 0
-            except ValueError:
-                self._col_index = self._col_index.copy()
-                self._col_index['partition'][columns[-1]] = 0
-                self._col_index['index_within_partition'][columns[-1]] = 0
+            self._col_index.loc[columns[-1]] = [0,0] 
         else:
             return DataFrame(columns=columns, row_partitions=new_rows)
 
@@ -1308,13 +1301,12 @@ class DataFrame(object):
     def ffill(self, axis=None, inplace=False, limit=None, downcast=None):
         """Synonym for DataFrame.fillna(method='ffill')
         """
-        new_df = self.fillna(
-            method='ffill', axis=axis, limit=limit, downcast=downcast
-        )
-        if inplace:
-            self._row_partitions = new_df._row_partitions
-            self.columns = new_df.columns
-        else:
+        new_df = self.fillna(method='bfill',
+                             axis=axis,
+                             limit=limit,
+                             downcast=downcast,
+                             inplace=inplace)
+        if not inplace:
             return new_df
 
     def fillna(self, value=None, method=None, axis=None, inplace=False,
@@ -1459,9 +1451,8 @@ class DataFrame(object):
         Returns:
             scalar: type of index
         """
-        idx = self._row_index
-        if (idx is not None):
-            return idx.first_valid_index()
+        if self._row_index is not None:
+            return self._row_index.first_valid_index()
         return None
 
     def floordiv(self, other, axis='columns', level=None, fill_value=None):
@@ -1516,7 +1507,7 @@ class DataFrame(object):
         # TODO: Fix this function
         return
         temp_df = self._map_partitions(
-            lambda df: df.get(key, default=default))
+            lambda df: df.get(key, default=default), self._row_partitions)
         return to_pandas(temp_df)
 
     def get_dtype_counts(self):
@@ -1852,9 +1843,8 @@ class DataFrame(object):
         Returns:
             scalar: type of index
         """
-        idx = self._row_index
-        if (idx is not None):
-            return idx.last_valid_index()
+        if self._row_index is not None:
+            return self._row_index.last_valid_index()
         return None
 
     def le(self, other, axis='columns', level=None):
