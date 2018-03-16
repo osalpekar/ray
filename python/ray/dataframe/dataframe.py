@@ -1281,9 +1281,15 @@ class DataFrame(object):
         if inplace:
             # TODO: return ray series instead of ray df
             self._row_partitions = new_rows
+            old_num_col_partitions = len(self._col_partitions)
             self._col_partitions = _rebuild_cols.remote(self._row_partitions,
                                                         None, columns)
-            self._col_index.loc[columns[-1]] = [0,0] 
+            if len(self._col_partitions) != old_num_col_partitions:
+                self._col_index.loc[columns[-1]] = [len(self._col_partitions) - 1, 0] 
+            else:
+                new_index = self._col_index['index_within_partition'][columns[-2]] + 1
+                self._col_index.loc[columns[-1]] = [len(self._col_partitions) - 1,
+                        new_index] 
         else:
             return DataFrame(columns=columns, row_partitions=new_rows)
 
