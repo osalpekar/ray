@@ -519,7 +519,7 @@ class DataFrame(object):
                          index=self.index)
 
     def applymap(self, func):
-        """Apply a function to a DataFrame series-wise.
+        """Apply a function to a DataFrame elementwise.
 
         Args:
             func (callable): The function to apply.
