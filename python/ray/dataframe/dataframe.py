@@ -1602,7 +1602,7 @@ class DataFrame(object):
                             self._row_partitions if axis == 'columns'
                             else self._col_partitions)))
 
-        idxmax_series.index = self.columns if is_axis_zero else self.index
+        idxmax_series.index = self.columns if axis == 'index' else self.index
 
         return idxmax_series
 
@@ -1629,7 +1629,7 @@ class DataFrame(object):
                             self._row_partitions if axis == 'columns'
                             else self._col_partitions)))
 
-        idxmin_series.index = self.columns if is_axis_zero else self.index
+        idxmin_series.index = self.columns if axis == 'index' else self.index
 
         return idxmin_series
 
@@ -2127,17 +2127,46 @@ class DataFrame(object):
         Returns:
             A new DataFrame if inplace=False
         """
-        # return # TODO: Fix this
-        new_rows = _map_partitions(lambda df: df.query(expr=expr,
-                                                       inplace=False,
-                                                       **kwargs),
-                                   self._row_partitions)
+        return #TODO: needs fixing
+        columns = self.columns
+
+        def query_helper(df):
+            df = df.copy()
+            df.columns = columns
+            df.query(expr, inplace=True, **kwargs)
+            df.columns = pd.RangeIndex(0, len(df.columns))
+            return df
+
+        inplace = validate_bool_kwarg(inplace, "inplace")
+        new_cols = _map_partitions(query_helper, self._col_partitions)
+
+        columns_copy = pd.DataFrame(columns=self.columns)
+        columns_copy.query(expr, inplace=True, **kwargs)
+        columns = columns_copy.columns
 
         if inplace:
-            self._update_inplace(row_partitions=new_rows)
-            # self._row_partitions = new_rows
+            # TODO: return ray series instead of ray df
+            self._row_partitions = new_rows
+            old_num_col_partitions = len(self._col_partitions)
+            self._col_partitions = _rebuild_cols.remote(self._row_partitions,
+                                                        None, columns)
+            if len(self._col_partitions) != old_num_col_partitions:
+                self._col_index.loc[columns[-1]] = [len(self._col_partitions) - 1, 0] 
+            else:
+                new_index = self._col_index['index_within_partition'][columns[-2]] + 1
+                self._col_index.loc[columns[-1]] = [len(self._col_partitions) - 1,
+                        new_index] 
         else:
-            return DataFrame(row_partitions=new_rows, columns=self.columns)
+            return DataFrame(columns=columns, row_partitions=new_rows)
+        # new_rows = _map_partitions(lambda df: df.query(expr=expr,
+        #                                                inplace=False,
+        #                                                **kwargs),
+        #                            self._row_partitions)
+
+        # if inplace:
+        #     self._update_inplace(row_partitions=new_rows)
+        # else:
+        #     return DataFrame(row_partitions=new_rows, columns=self.columns)
 
     def radd(self, other, axis='columns', level=None, fill_value=None):
         raise NotImplementedError(
@@ -3219,6 +3248,7 @@ class DataFrame(object):
         We currently support: single label, list array, slice object
         We do not support: boolean array, callable
         """
+        # TODO: needs fixing
         from .indexing import _Loc_Indexer
         return _Loc_Indexer(self)
 
@@ -3255,6 +3285,7 @@ class DataFrame(object):
         We currently support: single label, list array, slice object
         We do not support: boolean array, callable
         """
+        # TODO: needs fixing 
         from .indexing import _iLoc_Indexer
         return _iLoc_Indexer(self)
 
