@@ -654,6 +654,8 @@ class DataFrame(object):
         is_rows = self._row_partitions is not None
         is_columns = self._col_partitions is not None
 
+        #concat the series output by _map_partitions as rows if the specified
+        #axis corresponds to the partitions, otherwise concat as columns and reduce 
         concat_axis = 1 if (axis == 'index' and is_rows) or \
                            (axis == 'columns' and is_columns) else 0
 
@@ -666,6 +668,8 @@ class DataFrame(object):
                             else self._col_partitions)),
                             axis=concat_axis)
 
+        # if series_sum is a df, reduce across the columns to get the result
+        # otherwise return series_sum as is
         if concat_axis:
             rows_sum_series = sum_series.sum(axis=1)
             rows_sum_series.index = self.columns
@@ -1978,6 +1982,8 @@ class DataFrame(object):
         is_rows = self._row_partitions is not None
         is_columns = self._col_partitions is not None
 
+        #concat the series output by _map_partitions as rows if the specified
+        #axis corresponds to the partitions, otherwise concat as columns and reduce 
         concat_axis = 1 if (axis == 'index' and is_rows) or \
                            (axis == 'columns' and is_columns) else 0
 
@@ -1991,6 +1997,8 @@ class DataFrame(object):
                             else self._col_partitions)),
                             axis=concat_axis)
 
+        # if series_sum is a df, reduce across the columns to get the result
+        # otherwise return series_sum as is
         if concat_axis:
             rows_max_series = max_series.max(axis=1)
             rows_max_series.index = self.columns
@@ -2051,6 +2059,8 @@ class DataFrame(object):
         is_rows = self._row_partitions is not None
         is_columns = self._col_partitions is not None
 
+        #concat the series output by _map_partitions as rows if the specified
+        #axis corresponds to the partitions, otherwise concat as columns and reduce 
         concat_axis = 1 if (axis == 'index' and is_rows) or \
                            (axis == 'columns' and is_columns) else 0
 
@@ -2064,6 +2074,8 @@ class DataFrame(object):
                             else self._col_partitions)),
                             axis=concat_axis)
 
+        # if series_sum is a df, reduce across the columns to get the result
+        # otherwise return series_sum as is
         if concat_axis:
             rows_min_series = min_series.min(axis=1)
             rows_min_series.index = self.columns
