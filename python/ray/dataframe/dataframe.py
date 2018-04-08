@@ -1253,7 +1253,6 @@ class DataFrame(object):
         columns = self.columns
 
         def eval_helper(df):
-            df = df.copy()
             df.columns = columns
             cdf = df.eval(expr, inplace=False, **kwargs)
             if not isinstance(cdf, pd.Series):
