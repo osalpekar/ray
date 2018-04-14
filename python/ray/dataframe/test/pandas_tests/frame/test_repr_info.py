@@ -14,8 +14,7 @@ from pandas.compat import StringIO, lrange, u, PYPY
 import pandas.io.formats.format as fmt
 import ray.dataframe as pd
 from pandas import (DataFrame, Series, compat, option_context,
-                    date_range, period_range, Categorical,
-                    MultiIndex, CategoricalIndex)
+                    date_range, period_range, Categorical)
 
 import pandas.util.testing as tm
 
