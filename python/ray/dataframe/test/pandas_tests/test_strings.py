@@ -530,27 +530,6 @@ class TestStringMethods(object):
         exp = Series(['foObaD__baRbaD', NA])
         tm.assert_series_equal(result, exp)
 
-    def test_replace_literal(self):
-        # GH16808 literal replace (regex=False vs regex=True)
-        values = Series(['f.o', 'foo', NA])
-        exp = Series(['bao', 'bao', NA])
-        result = values.str.replace('f.', 'ba')
-        tm.assert_series_equal(result, exp)
-
-        exp = Series(['bao', 'foo', NA])
-        result = values.str.replace('f.', 'ba', regex=False)
-        tm.assert_series_equal(result, exp)
-
-        # Cannot do a literal replace if given a callable repl or compiled
-        # pattern
-        callable_repl = lambda m: m.group(0).swapcase()
-        compiled_pat = re.compile('[a-z][A-Z]{2}')
-
-        pytest.raises(ValueError, values.str.replace, 'abc', callable_repl,
-                      regex=False)
-        pytest.raises(ValueError, values.str.replace, compiled_pat, '',
-                      regex=False)
-
     def test_repeat(self):
         values = Series(['a', 'b', NA, 'c', NA, 'd'])
 
@@ -633,16 +612,13 @@ class TestStringMethods(object):
 
     def test_extract_expand_None(self):
         values = Series(['fooBAD__barBAD', NA, 'foo'])
-        with tm.assert_raises_regex(ValueError,
-                                    'expand must be True or False'):
+        with tm.assert_produces_warning(FutureWarning):
             values.str.extract('.*(BAD[_]+).*(BAD)', expand=None)
 
     def test_extract_expand_unspecified(self):
         values = Series(['fooBAD__barBAD', NA, 'foo'])
-        result_unspecified = values.str.extract('.*(BAD[_]+).*')
-        assert isinstance(result_unspecified, DataFrame)
-        result_true = values.str.extract('.*(BAD[_]+).*', expand=True)
-        tm.assert_frame_equal(result_unspecified, result_true)
+        with tm.assert_produces_warning(FutureWarning):
+            values.str.extract('.*(BAD[_]+).*(BAD)')
 
     def test_extract_expand_False(self):
         # Contains tests like those in test_match and some others.
@@ -1096,50 +1072,28 @@ class TestStringMethods(object):
         e = DataFrame(['ab', 'abc', 'd', 'cd'], i)
         tm.assert_frame_equal(r, e)
 
-    @pytest.mark.parametrize('data, names', [
-        ([], (None, )),
-        ([], ('i1', )),
-        ([], (None, 'i2')),
-        ([], ('i1', 'i2')),
-        (['a3', 'b3', 'd4c2'], (None, )),
-        (['a3', 'b3', 'd4c2'], ('i1', 'i2')),
-        (['a3', 'b3', 'd4c2'], (None, 'i2')),
-        (['a3', 'b3', 'd4c2'], ('i1', 'i2')),
-    ])
-    def test_extractall_no_matches(self, data, names):
-        # GH19075 extractall with no matches should return a valid MultiIndex
-        n = len(data)
-        if len(names) == 1:
-            i = Index(range(n), name=names[0])
-        else:
-            a = (tuple([i] * (n - 1)) for i in range(n))
-            i = MultiIndex.from_tuples(a, names=names)
-        s = Series(data, name='series_name', index=i, dtype='object')
-        ei = MultiIndex.from_tuples([], names=(names + ('match',)))
-
+    def test_extractall_no_matches(self):
+        s = Series(['a3', 'b3', 'd4c2'], name='series_name')
         # one un-named group.
         r = s.str.extractall('(z)')
-        e = DataFrame(columns=[0], index=ei)
+        e = DataFrame(columns=[0])
         tm.assert_frame_equal(r, e)
-
         # two un-named groups.
         r = s.str.extractall('(z)(z)')
-        e = DataFrame(columns=[0, 1], index=ei)
+        e = DataFrame(columns=[0, 1])
         tm.assert_frame_equal(r, e)
-
         # one named group.
         r = s.str.extractall('(?P<first>z)')
-        e = DataFrame(columns=["first"], index=ei)
+        e = DataFrame(columns=["first"])
         tm.assert_frame_equal(r, e)
-
         # two named groups.
         r = s.str.extractall('(?P<first>z)(?P<second>z)')
-        e = DataFrame(columns=["first", "second"], index=ei)
+        e = DataFrame(columns=["first", "second"])
         tm.assert_frame_equal(r, e)
-
         # one named, one un-named.
         r = s.str.extractall('(z)(?P<second>z)')
-        e = DataFrame(columns=[0, "second"], index=ei)
+        e = DataFrame(columns=[0,
+                               "second"])
         tm.assert_frame_equal(r, e)
 
     def test_extractall_stringindex(self):
@@ -1991,19 +1945,6 @@ class TestStringMethods(object):
         result = values.str.rsplit('_', n=1)
         exp = Series([['a_b', 'c'], ['c_d', 'e'], NA, ['f_g', 'h']])
         tm.assert_series_equal(result, exp)
-
-    def test_split_blank_string(self):
-        # expand blank split GH 20067
-        values = Series([''], name='test')
-        result = values.str.split(expand=True)
-        exp = DataFrame([[]])
-        tm.assert_frame_equal(result, exp)
-
-        values = Series(['a b c', 'a b', '', ' '], name='test')
-        result = values.str.split(expand=True)
-        exp = DataFrame([['a', 'b', 'c'], ['a', 'b', np.nan],
-                         [np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan]])
-        tm.assert_frame_equal(result, exp)
 
     def test_split_noargs(self):
         # #1859

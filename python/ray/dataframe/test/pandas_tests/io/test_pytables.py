@@ -3,42 +3,47 @@ import os
 import tempfile
 from contextlib import contextmanager
 from warnings import catch_warnings
-from distutils.version import LooseVersion
 
 import datetime
 from datetime import timedelta
-
 import numpy as np
 
+import pandas
 import pandas as pd
-from pandas import (Series, DataFrame, Panel, MultiIndex, Int64Index,
+from pandas import (Series, DataFrame, Panel, Panel4D, MultiIndex, Int64Index,
                     RangeIndex, Categorical, bdate_range,
                     date_range, timedelta_range, Index, DatetimeIndex,
-                    isna, compat, concat, Timestamp)
-
-import pandas.util.testing as tm
-import test_decorators as td
-from pandas.util.testing import (assert_panel_equal,
-                                 assert_frame_equal,
-                                 assert_series_equal,
-                                 set_timezone)
+                    isna)
 
 from pandas.compat import (is_platform_windows, is_platform_little_endian,
-                           PY35, PY36, BytesIO, text_type,
-                           range, lrange, u)
+                           PY3, PY35, PY36, BytesIO, text_type)
 from pandas.io.formats.printing import pprint_thing
 from pandas.core.dtypes.common import is_categorical_dtype
 
 tables = pytest.importorskip('tables')
-from pandas.io import pytables as pytables  # noqa:E402
-from pandas.io.pytables import (TableIterator,  # noqa:E402
-                                HDFStore, get_store, Term, read_hdf,
+from pandas.io.pytables import TableIterator
+from pandas.io.pytables import (HDFStore, get_store, Term, read_hdf,
                                 PossibleDataLossError, ClosedFileError)
 
+from pandas.io import pytables as pytables
+import pandas.util.testing as tm
+from pandas.util.testing import (assert_panel4d_equal,
+                                 assert_panel_equal,
+                                 assert_frame_equal,
+                                 assert_series_equal,
+                                 set_timezone)
+from pandas import concat, Timestamp
+from pandas import compat
+from pandas.compat import range, lrange, u
+from distutils.version import LooseVersion
 
-_default_compressor = ('blosc' if LooseVersion(tables.__version__) >=
-                       LooseVersion('2.2') else 'zlib')
+_default_compressor = ('blosc' if LooseVersion(tables.__version__) >= '2.2'
+                       else 'zlib')
 
+
+# testing on windows/py3 seems to fault
+# for using compression
+skip_compression = PY3 and is_platform_windows()
 
 # contextmanager to ensure the file cleanup
 
@@ -323,13 +328,13 @@ class TestHDFStore(Base):
         with ensure_clean_store(self.path) as store:
             df = tm.makeDataFrame()
 
-            pd.set_option('io.hdf.default_format', 'fixed')
+            pandas.set_option('io.hdf.default_format', 'fixed')
             _maybe_remove(store, 'df')
             store.put('df', df)
             assert not store.get_storer('df').is_table
             pytest.raises(ValueError, store.append, 'df2', df)
 
-            pd.set_option('io.hdf.default_format', 'table')
+            pandas.set_option('io.hdf.default_format', 'table')
             _maybe_remove(store, 'df')
             store.put('df', df)
             assert store.get_storer('df').is_table
@@ -337,19 +342,19 @@ class TestHDFStore(Base):
             store.append('df2', df)
             assert store.get_storer('df').is_table
 
-            pd.set_option('io.hdf.default_format', None)
+            pandas.set_option('io.hdf.default_format', None)
 
         with ensure_clean_path(self.path) as path:
 
             df = tm.makeDataFrame()
 
-            pd.set_option('io.hdf.default_format', 'fixed')
+            pandas.set_option('io.hdf.default_format', 'fixed')
             df.to_hdf(path, 'df')
             with HDFStore(path) as store:
                 assert not store.get_storer('df').is_table
             pytest.raises(ValueError, df.to_hdf, path, 'df2', append=True)
 
-            pd.set_option('io.hdf.default_format', 'table')
+            pandas.set_option('io.hdf.default_format', 'table')
             df.to_hdf(path, 'df3')
             with HDFStore(path) as store:
                 assert store.get_storer('df3').is_table
@@ -357,7 +362,7 @@ class TestHDFStore(Base):
             with HDFStore(path) as store:
                 assert store.get_storer('df4').is_table
 
-            pd.set_option('io.hdf.default_format', None)
+            pandas.set_option('io.hdf.default_format', None)
 
     def test_keys(self):
 
@@ -372,23 +377,6 @@ class TestHDFStore(Base):
             expected = set(['/a', '/b', '/c', '/d', '/foo/bar'])
             assert set(store.keys()) == expected
             assert set(store) == expected
-
-    def test_keys_ignore_hdf_softlink(self):
-
-        # GH 20523
-        # Puts a softlink into HDF file and rereads
-
-        with ensure_clean_store(self.path) as store:
-
-            df = DataFrame(dict(A=lrange(5), B=lrange(5)))
-            store.put("df", df)
-
-            assert store.keys() == ["/df"]
-
-            store._handle.create_soft_link(store._handle.root, "symlink", "df")
-
-            # Should ignore the softlink
-            assert store.keys() == ["/df"]
 
     def test_iter_empty(self):
 
@@ -732,8 +720,12 @@ class TestHDFStore(Base):
             pytest.raises(ValueError, store.put, 'b', df,
                           format='fixed', complib='zlib')
 
-    @td.skip_if_windows_python_3
     def test_put_compression_blosc(self):
+        tm.skip_if_no_package('tables', min_version='2.2',
+                              app='blosc support')
+        if skip_compression:
+            pytest.skip("skipping on windows/PY3")
+
         df = tm.makeTimeDataFrame()
 
         with ensure_clean_store(self.path) as store:
@@ -904,6 +896,30 @@ class TestHDFStore(Base):
                 store.append('wp1', wp.iloc[:, 10:, :])
                 assert_panel_equal(store['wp1'], wp)
 
+                # ndim
+                p4d = tm.makePanel4D()
+                _maybe_remove(store, 'p4d')
+                store.append('p4d', p4d.iloc[:, :, :10, :])
+                store.append('p4d', p4d.iloc[:, :, 10:, :])
+                assert_panel4d_equal(store['p4d'], p4d)
+
+                # test using axis labels
+                _maybe_remove(store, 'p4d')
+                store.append('p4d', p4d.iloc[:, :, :10, :], axes=[
+                    'items', 'major_axis', 'minor_axis'])
+                store.append('p4d', p4d.iloc[:, :, 10:, :], axes=[
+                    'items', 'major_axis', 'minor_axis'])
+                assert_panel4d_equal(store['p4d'], p4d)
+
+                # test using differnt number of items on each axis
+                p4d2 = p4d.copy()
+                p4d2['l4'] = p4d['l1']
+                p4d2['l5'] = p4d['l1']
+                _maybe_remove(store, 'p4d2')
+                store.append(
+                    'p4d2', p4d2, axes=['items', 'major_axis', 'minor_axis'])
+                assert_panel4d_equal(store['p4d2'], p4d2)
+
                 # test using differt order of items on the non-index axes
                 _maybe_remove(store, 'wp1')
                 wp_append1 = wp.iloc[:, :10, :]
@@ -1070,7 +1086,7 @@ class TestHDFStore(Base):
         examples = []
         for dtype in ['category', object]:
             for val in values:
-                examples.append(pd.Series(val, dtype=dtype))
+                examples.append(pandas.Series(val, dtype=dtype))
 
         def roundtrip(s, key='data', encoding='latin-1', nan_rep=''):
             with ensure_clean_path(self.path) as store:
@@ -1155,13 +1171,13 @@ class TestHDFStore(Base):
             tm.assert_frame_equal(store['df2'], df)
 
             # tests the option io.hdf.dropna_table
-            pd.set_option('io.hdf.dropna_table', False)
+            pandas.set_option('io.hdf.dropna_table', False)
             _maybe_remove(store, 'df3')
             store.append('df3', df[:10])
             store.append('df3', df[10:])
             tm.assert_frame_equal(store['df3'], df)
 
-            pd.set_option('io.hdf.dropna_table', True)
+            pandas.set_option('io.hdf.dropna_table', True)
             _maybe_remove(store, 'df4')
             store.append('df4', df[:10])
             store.append('df4', df[10:])
@@ -1292,13 +1308,83 @@ class TestHDFStore(Base):
             df['int16'] = Series([1] * len(df), dtype='int16')
             store.append('df', df)
 
-            # store additional fields in different blocks
+            # store additonal fields in different blocks
             df['int16_2'] = Series([1] * len(df), dtype='int16')
             pytest.raises(ValueError, store.append, 'df', df)
 
-            # store multile additional fields in different blocks
+            # store multile additonal fields in different blocks
             df['float_3'] = Series([1.] * len(df), dtype='float64')
             pytest.raises(ValueError, store.append, 'df', df)
+
+    def test_ndim_indexables(self):
+        # test using ndim tables in new ways
+
+        with catch_warnings(record=True):
+            with ensure_clean_store(self.path) as store:
+
+                p4d = tm.makePanel4D()
+
+                def check_indexers(key, indexers):
+                    for i, idx in enumerate(indexers):
+                        descr = getattr(store.root, key).table.description
+                        assert getattr(descr, idx)._v_pos == i
+
+                # append then change (will take existing schema)
+                indexers = ['items', 'major_axis', 'minor_axis']
+
+                _maybe_remove(store, 'p4d')
+                store.append('p4d', p4d.iloc[:, :, :10, :], axes=indexers)
+                store.append('p4d', p4d.iloc[:, :, 10:, :])
+                assert_panel4d_equal(store.select('p4d'), p4d)
+                check_indexers('p4d', indexers)
+
+                # same as above, but try to append with differnt axes
+                _maybe_remove(store, 'p4d')
+                store.append('p4d', p4d.iloc[:, :, :10, :], axes=indexers)
+                store.append('p4d', p4d.iloc[:, :, 10:, :], axes=[
+                    'labels', 'items', 'major_axis'])
+                assert_panel4d_equal(store.select('p4d'), p4d)
+                check_indexers('p4d', indexers)
+
+                # pass incorrect number of axes
+                _maybe_remove(store, 'p4d')
+                pytest.raises(ValueError, store.append, 'p4d', p4d.iloc[
+                    :, :, :10, :], axes=['major_axis', 'minor_axis'])
+
+                # different than default indexables #1
+                indexers = ['labels', 'major_axis', 'minor_axis']
+                _maybe_remove(store, 'p4d')
+                store.append('p4d', p4d.iloc[:, :, :10, :], axes=indexers)
+                store.append('p4d', p4d.iloc[:, :, 10:, :])
+                assert_panel4d_equal(store['p4d'], p4d)
+                check_indexers('p4d', indexers)
+
+                # different than default indexables #2
+                indexers = ['major_axis', 'labels', 'minor_axis']
+                _maybe_remove(store, 'p4d')
+                store.append('p4d', p4d.iloc[:, :, :10, :], axes=indexers)
+                store.append('p4d', p4d.iloc[:, :, 10:, :])
+                assert_panel4d_equal(store['p4d'], p4d)
+                check_indexers('p4d', indexers)
+
+                # partial selection
+                result = store.select('p4d', ['labels=l1'])
+                expected = p4d.reindex(labels=['l1'])
+                assert_panel4d_equal(result, expected)
+
+                # partial selection2
+                result = store.select(
+                    'p4d', "labels='l1' and items='ItemA' and minor_axis='B'")
+                expected = p4d.reindex(
+                    labels=['l1'], items=['ItemA'], minor_axis=['B'])
+                assert_panel4d_equal(result, expected)
+
+                # non-existent partial selection
+                result = store.select(
+                    'p4d', "labels='l1' and items='Item1' and minor_axis='B'")
+                expected = p4d.reindex(labels=['l1'], items=[],
+                                       minor_axis=['B'])
+                assert_panel4d_equal(result, expected)
 
     def test_append_with_strings(self):
 
@@ -1306,7 +1392,7 @@ class TestHDFStore(Base):
             with catch_warnings(record=True):
                 wp = tm.makePanel()
                 wp2 = wp.rename_axis(
-                    {x: "%s_extra" % x for x in wp.minor_axis}, axis=2)
+                    dict([(x, "%s_extra" % x) for x in wp.minor_axis]), axis=2)
 
                 def check_col(key, name, size):
                     assert getattr(store.get_storer(key)
@@ -1830,6 +1916,12 @@ class TestHDFStore(Base):
                            'a', 'b'], index=make_index(['date', 'a', 't']))
             pytest.raises(ValueError, store.append, 'df', df)
 
+            # dup within level
+            _maybe_remove(store, 'df')
+            df = DataFrame(np.zeros((12, 2)), columns=['a', 'b'],
+                           index=make_index(['date', 'date', 'date']))
+            pytest.raises(ValueError, store.append, 'df', df)
+
             # fully names
             _maybe_remove(store, 'df')
             df = DataFrame(np.zeros((12, 2)), columns=[
@@ -1894,14 +1986,27 @@ class TestHDFStore(Base):
     def test_append_misc(self):
 
         with ensure_clean_store(self.path) as store:
-            df = tm.makeDataFrame()
-            store.append('df', df, chunksize=1)
-            result = store.select('df')
-            tm.assert_frame_equal(result, df)
 
-            store.append('df1', df, expectedrows=10)
-            result = store.select('df1')
-            tm.assert_frame_equal(result, df)
+            with catch_warnings(record=True):
+
+                # unsupported data types for non-tables
+                p4d = tm.makePanel4D()
+                pytest.raises(TypeError, store.put, 'p4d', p4d)
+
+                # unsupported data types
+                pytest.raises(TypeError, store.put, 'abc', None)
+                pytest.raises(TypeError, store.put, 'abc', '123')
+                pytest.raises(TypeError, store.put, 'abc', 123)
+                pytest.raises(TypeError, store.put, 'abc', np.arange(5))
+
+                df = tm.makeDataFrame()
+                store.append('df', df, chunksize=1)
+                result = store.select('df')
+                tm.assert_frame_equal(result, df)
+
+                store.append('df1', df, expectedrows=10)
+                result = store.select('df1')
+                tm.assert_frame_equal(result, df)
 
         # more chunksize in append tests
         def check(obj, comparator):
@@ -1923,6 +2028,10 @@ class TestHDFStore(Base):
         with catch_warnings(record=True):
             p = tm.makePanel()
             check(p, assert_panel_equal)
+
+        with catch_warnings(record=True):
+            p4d = tm.makePanel4D()
+            check(p4d, assert_panel4d_equal)
 
         # empty frame, GH4273
         with ensure_clean_store(self.path) as store:
@@ -1988,7 +2097,7 @@ class TestHDFStore(Base):
             assert df.dtypes['invalid'] == np.object_
             pytest.raises(TypeError, store.append, 'df', df)
 
-            # directly ndarray
+            # directy ndarray
             pytest.raises(TypeError, store.append, 'df', np.arange(10))
 
             # series directly
@@ -2035,9 +2144,9 @@ class TestHDFStore(Base):
             assert df1.dtypes[0] == 'float32'
 
             # check with mixed dtypes
-            df1 = DataFrame(dict((c, Series(np.random.randn(5), dtype=c))
-                                 for c in ['float32', 'float64', 'int32',
-                                           'int64', 'int16', 'int8']))
+            df1 = DataFrame(dict([(c, Series(np.random.randn(5), dtype=c))
+                                  for c in ['float32', 'float64', 'int32',
+                                            'int64', 'int16', 'int8']]))
             df1['string'] = 'foo'
             df1['float322'] = 1.
             df1['float322'] = df1['float322'].astype('float32')
@@ -2051,7 +2160,7 @@ class TestHDFStore(Base):
                                'bool': 1, 'int16': 1, 'int8': 1,
                                'int64': 1, 'object': 1, 'datetime64[ns]': 2})
             result = result.sort_index()
-            expected = expected.sort_index()
+            result = expected.sort_index()
             tm.assert_series_equal(result, expected)
 
     def test_table_mixed_dtypes(self):
@@ -2094,6 +2203,21 @@ class TestHDFStore(Base):
                 store.append('p1_mixed', wp)
                 assert_panel_equal(store.select('p1_mixed'), wp)
 
+        with catch_warnings(record=True):
+            # ndim
+            wp = tm.makePanel4D()
+            wp['obj1'] = 'foo'
+            wp['obj2'] = 'bar'
+            wp['bool1'] = wp['l1'] > 0
+            wp['bool2'] = wp['l2'] > 0
+            wp['int1'] = 1
+            wp['int2'] = 2
+            wp = wp._consolidate()
+
+            with ensure_clean_store(self.path) as store:
+                store.append('p4d_mixed', wp)
+                assert_panel4d_equal(store.select('p4d_mixed'), wp)
+
     def test_unimplemented_dtypes_table_columns(self):
 
         with ensure_clean_store(self.path) as store:
@@ -2129,7 +2253,7 @@ class TestHDFStore(Base):
         weekmask_egypt = 'Sun Mon Tue Wed Thu'
         holidays = ['2012-05-01',
                     datetime.datetime(2013, 5, 1), np.datetime64('2014-05-01')]
-        bday_egypt = pd.offsets.CustomBusinessDay(
+        bday_egypt = pandas.offsets.CustomBusinessDay(
             holidays=holidays, weekmask=weekmask_egypt)
         dt = datetime.datetime(2013, 4, 30)
         dts = date_range(dt, periods=5, freq=bday_egypt)
@@ -2435,8 +2559,10 @@ class TestHDFStore(Base):
                 df.loc[0:4, 'string'] = 'bar'
                 wp = tm.makePanel()
 
+                p4d = tm.makePanel4D()
                 store.put('df', df, format='table')
                 store.put('wp', wp, format='table')
+                store.put('p4d', p4d, format='table')
 
                 # some invalid terms
                 pytest.raises(ValueError, store.select,
@@ -2485,7 +2611,8 @@ class TestHDFStore(Base):
                 wpneg = Panel.fromDict({-1: tm.makeDataFrame(),
                                         0: tm.makeDataFrame(),
                                         1: tm.makeDataFrame()})
-
+                p4d = tm.makePanel4D()
+                store.put('p4d', p4d, format='table')
                 store.put('wp', wp, format='table')
                 store.put('wpneg', wpneg, format='table')
 
@@ -2504,6 +2631,17 @@ class TestHDFStore(Base):
                 expected = wp.truncate(
                     after='20000108').reindex(minor=['A', 'B'])
                 tm.assert_panel_equal(result, expected)
+
+            # p4d
+            with catch_warnings(record=True):
+
+                result = store.select('p4d',
+                                      ("major_axis<'20000108' and "
+                                       "minor_axis=['A', 'B'] and "
+                                       "items=['ItemA', 'ItemB']"))
+                expected = p4d.truncate(after='20000108').reindex(
+                    minor=['A', 'B'], items=['ItemA', 'ItemB'])
+                assert_panel4d_equal(result, expected)
 
             with catch_warnings(record=True):
 
@@ -2524,6 +2662,12 @@ class TestHDFStore(Base):
 
                 for t in terms:
                     store.select('wp', t)
+                    store.select('p4d', t)
+
+                # valid for p4d only
+                terms = ["labels=['l1', 'l2']"]
+                for t in terms:
+                    store.select('p4d', t)
 
                 with tm.assert_raises_regex(
                         TypeError, 'Only named functions are supported'):
@@ -2749,10 +2893,7 @@ class TestHDFStore(Base):
         except OverflowError:
             pytest.skip('known failer on some windows platforms')
 
-    @pytest.mark.parametrize("compression", [
-        False, pytest.param(True, marks=td.skip_if_windows_python_3)
-    ])
-    def test_frame(self, compression):
+    def test_frame(self):
 
         df = tm.makeDataFrame()
 
@@ -2760,14 +2901,21 @@ class TestHDFStore(Base):
         df.values[0, 0] = np.nan
         df.values[5, 3] = np.nan
 
-        self._check_roundtrip_table(df, tm.assert_frame_equal,
-                                    compression=compression)
-        self._check_roundtrip(df, tm.assert_frame_equal,
-                              compression=compression)
+        self._check_roundtrip_table(df, tm.assert_frame_equal)
+        self._check_roundtrip(df, tm.assert_frame_equal)
+
+        if not skip_compression:
+            self._check_roundtrip_table(df, tm.assert_frame_equal,
+                                        compression=True)
+            self._check_roundtrip(df, tm.assert_frame_equal,
+                                  compression=True)
 
         tdf = tm.makeTimeDataFrame()
-        self._check_roundtrip(tdf, tm.assert_frame_equal,
-                              compression=compression)
+        self._check_roundtrip(tdf, tm.assert_frame_equal)
+
+        if not skip_compression:
+            self._check_roundtrip(tdf, tm.assert_frame_equal,
+                                  compression=True)
 
         with ensure_clean_store(self.path) as store:
             # not consolidated
@@ -2874,10 +3022,7 @@ class TestHDFStore(Base):
             recons = store['series']
             tm.assert_series_equal(recons, series)
 
-    @pytest.mark.parametrize("compression", [
-        False, pytest.param(True, marks=td.skip_if_windows_python_3)
-    ])
-    def test_store_mixed(self, compression):
+    def test_store_mixed(self):
 
         def _make_one():
             df = tm.makeDataFrame()
@@ -2902,12 +3047,19 @@ class TestHDFStore(Base):
             tm.assert_frame_equal(store['obj'], df2)
 
         # check that can store Series of all of these types
-        self._check_roundtrip(df1['obj1'], tm.assert_series_equal,
-                              compression=compression)
-        self._check_roundtrip(df1['bool1'], tm.assert_series_equal,
-                              compression=compression)
-        self._check_roundtrip(df1['int1'], tm.assert_series_equal,
-                              compression=compression)
+        self._check_roundtrip(df1['obj1'], tm.assert_series_equal)
+        self._check_roundtrip(df1['bool1'], tm.assert_series_equal)
+        self._check_roundtrip(df1['int1'], tm.assert_series_equal)
+
+        if not skip_compression:
+            self._check_roundtrip(df1['obj1'], tm.assert_series_equal,
+                                  compression=True)
+            self._check_roundtrip(df1['bool1'], tm.assert_series_equal,
+                                  compression=True)
+            self._check_roundtrip(df1['int1'], tm.assert_series_equal,
+                                  compression=True)
+            self._check_roundtrip(df1, tm.assert_frame_equal,
+                                  compression=True)
 
     def test_wide(self):
 
@@ -2936,7 +3088,7 @@ class TestHDFStore(Base):
             expected = df.loc[:, ['A']]
             assert_frame_equal(result, expected)
 
-        # dups across dtypes
+        # dups accross dtypes
         df = concat([DataFrame(np.random.randn(10, 4),
                                columns=['A', 'A', 'B', 'B']),
                      DataFrame(np.random.randint(0, 10, size=20)
@@ -4118,10 +4270,9 @@ class TestHDFStore(Base):
                           ['df1', 'df3'], where=['A>0', 'B>0'],
                           selector='df1')
 
-    @pytest.mark.skipif(
-        LooseVersion(tables.__version__) < LooseVersion('3.1.0'),
-        reason=("tables version does not support fix for nan selection "
-                "bug: GH 4858"))
+    @pytest.mark.skipf(
+        LooseVersion(tables.__version__) < '3.1.0',
+        "tables version does not support fix for nan selection bug: GH 4858")
     def test_nan_selection_bug_4858(self):
 
         with ensure_clean_store(self.path) as store:
@@ -4981,10 +5132,11 @@ class TestHDFStore(Base):
             store.close()
             pytest.raises(ValueError, read_hdf, path)
 
-    @td.skip_if_no('pathlib')
     def test_read_from_pathlib_path(self):
 
         # GH11773
+        tm._skip_if_no_pathlib()
+
         from pathlib import Path
 
         expected = DataFrame(np.random.rand(4, 5),
@@ -4998,10 +5150,11 @@ class TestHDFStore(Base):
 
         tm.assert_frame_equal(expected, actual)
 
-    @td.skip_if_no('py.path')
     def test_read_from_py_localpath(self):
 
         # GH11773
+        tm._skip_if_no_localpath()
+
         from py.path import local as LocalPath
 
         expected = DataFrame(np.random.rand(4, 5),
@@ -5223,9 +5376,11 @@ class TestHDFComplexValues(Base):
 
         with catch_warnings(record=True):
             p = Panel({'One': df, 'Two': df})
+            p4d = Panel4D({'i': p, 'ii': p})
 
-            objs = [df, p]
-            comps = [tm.assert_frame_equal, tm.assert_panel_equal]
+            objs = [df, p, p4d]
+            comps = [tm.assert_frame_equal, tm.assert_panel_equal,
+                     tm.assert_panel4d_equal]
             for obj, comp in zip(objs, comps):
                 with ensure_clean_path(self.path) as path:
                     obj.to_hdf(path, 'obj', format='table')
@@ -5278,7 +5433,7 @@ class TestTimezones(Base):
                 b_e = b.loc[i, c]
                 if not (a_e == b_e and a_e.tz == b_e.tz):
                     raise AssertionError(
-                        "invalid tz comparison [%s] [%s]" % (a_e, b_e))
+                        "invalid tz comparsion [%s] [%s]" % (a_e, b_e))
 
     def test_append_with_timezones_dateutil(self):
 
@@ -5484,7 +5639,6 @@ class TestTimezones(Base):
             tm.assert_index_equal(recons.index, rng)
             assert rng.tz == recons.index.tz
 
-    @td.skip_if_windows
     def test_store_timezone(self):
         # GH2852
         # issue storing datetime.date with a timezone as it resets when read

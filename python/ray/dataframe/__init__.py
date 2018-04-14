@@ -3,7 +3,8 @@ from __future__ import division
 from __future__ import print_function
 
 import pandas as pd
-from pandas import eval
+from pandas import (eval, MultiIndex, CategoricalIndex,
+                    date_range)
 import threading
 
 pd_version = pd.__version__
@@ -34,7 +35,8 @@ from .io import (read_csv, read_parquet)  # noqa: 402
 from .concat import concat # noqa: 402
 
 __all__ = [
-    "DataFrame", "Series", "read_csv", "read_parquet", "concat", "eval"
+    "DataFrame", "Series", "read_csv", "read_parquet", "concat", "eval",
+    "MultiIndex", "CategoricalIndex", "date_range"
 ]
 
 try:

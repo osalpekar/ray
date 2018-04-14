@@ -120,25 +120,25 @@ class Base(object):
         if isinstance(key, dict):
             key = key[axis]
 
-        # use an artificial conversion to map the key as integers to the labels
-        # so ix can work for comparisons
+        # use an artifical conversion to map the key as integers to the labels
+        # so ix can work for comparisions
         if method == 'indexer':
             method = 'ix'
             key = obj._get_axis(axis)[key]
 
         # in case we actually want 0 index slicing
-        with catch_warnings(record=True):
-            try:
+        try:
+            with catch_warnings(record=True):
                 xp = getattr(obj, method).__getitem__(_axify(obj, key, axis))
-            except:
-                xp = getattr(obj, method).__getitem__(key)
+        except:
+            xp = getattr(obj, method).__getitem__(key)
 
         return xp
 
     def get_value(self, f, i, values=False):
         """ return the value for the location i """
 
-        # check against values
+        # check agains values
         if values:
             return f.values[i]
 
@@ -160,7 +160,7 @@ class Base(object):
         for i in indicies:
             result = getattr(f, func)[i]
 
-            # check against values
+            # check agains values
             if values:
                 expected = f.values[i]
             else:

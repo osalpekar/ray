@@ -120,8 +120,8 @@ script:
   - python -m pytest python/ray/dataframe/test/test_dataframe.py
   - python -m pytest python/ray/dataframe/test/test_series.py
   - python -m pytest python/ray/dataframe/test/test_concat.py
-  - python -m pytest python/ray/dataframe/test/test_repr_info.py
-  - python -m pytest python/ray/dataframe/test/test_eval.py
+  - python -m pytest python/ray/dataframe/test/pandas_tests/frame/test_repr_info.py
+  - python -m pytest python/ray/dataframe/test/pandas_tests/computation/test_eval.py
 
 deploy:
   - provider: s3

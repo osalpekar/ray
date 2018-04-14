@@ -5,13 +5,11 @@ test date_range, bdate_range construction from the convenience range functions
 import pytest
 
 import numpy as np
-import pytz
 from pytz import timezone
 from datetime import datetime, timedelta, time
 
 import pandas as pd
 import pandas.util.testing as tm
-import test_decorators as td
 from pandas import compat
 from pandas import date_range, bdate_range, offsets, DatetimeIndex, Timestamp
 from pandas.tseries.offsets import (generate_range, CDay, BDay, DateOffset,
@@ -20,61 +18,6 @@ from pandas.tseries.offsets import (generate_range, CDay, BDay, DateOffset,
 from pandas.tests.series.common import TestData
 
 START, END = datetime(2009, 1, 1), datetime(2010, 1, 1)
-
-
-class TestTimestampEquivDateRange(object):
-    # Older tests in TestTimeSeries constructed their `stamp` objects
-    # using `date_range` instead of the `Timestamp` constructor.
-    # TestTimestampEquivDateRange checks that these are equivalent in the
-    # pertinent cases.
-
-    def test_date_range_timestamp_equiv(self):
-        rng = date_range('20090415', '20090519', tz='US/Eastern')
-        stamp = rng[0]
-
-        ts = Timestamp('20090415', tz='US/Eastern', freq='D')
-        assert ts == stamp
-
-    def test_date_range_timestamp_equiv_dateutil(self):
-        rng = date_range('20090415', '20090519', tz='dateutil/US/Eastern')
-        stamp = rng[0]
-
-        ts = Timestamp('20090415', tz='dateutil/US/Eastern', freq='D')
-        assert ts == stamp
-
-    def test_date_range_timestamp_equiv_explicit_pytz(self):
-        rng = date_range('20090415', '20090519',
-                         tz=pytz.timezone('US/Eastern'))
-        stamp = rng[0]
-
-        ts = Timestamp('20090415', tz=pytz.timezone('US/Eastern'), freq='D')
-        assert ts == stamp
-
-    @td.skip_if_windows_python_3
-    def test_date_range_timestamp_equiv_explicit_dateutil(self):
-        from pandas._libs.tslibs.timezones import dateutil_gettz as gettz
-
-        rng = date_range('20090415', '20090519', tz=gettz('US/Eastern'))
-        stamp = rng[0]
-
-        ts = Timestamp('20090415', tz=gettz('US/Eastern'), freq='D')
-        assert ts == stamp
-
-    def test_date_range_timestamp_equiv_from_datetime_instance(self):
-        datetime_instance = datetime(2014, 3, 4)
-        # build a timestamp with a frequency, since then it supports
-        # addition/subtraction of integers
-        timestamp_instance = date_range(datetime_instance, periods=1,
-                                        freq='D')[0]
-
-        ts = Timestamp(datetime_instance, freq='D')
-        assert ts == timestamp_instance
-
-    def test_date_range_timestamp_equiv_preserve_frequency(self):
-        timestamp_instance = date_range('2014-03-05', periods=1, freq='D')[0]
-        ts = Timestamp('2014-03-05', freq='D')
-
-        assert timestamp_instance == ts
 
 
 class TestDateRanges(TestData):
@@ -222,13 +165,16 @@ class TestDateRanges(TestData):
         with tm.assert_raises_regex(ValueError, msg):
             date_range()
 
-    @pytest.mark.parametrize('f', [compat.long, int])
-    def test_compat_replace(self, f):
+    def test_compat_replace(self):
         # https://github.com/statsmodels/statsmodels/issues/3349
         # replace should take ints/longs for compat
-        result = date_range(Timestamp('1960-04-01 00:00:00', freq='QS-JAN'),
-                            periods=f(76), freq='QS-JAN')
-        assert len(result) == 76
+
+        for f in [compat.long, int]:
+            result = date_range(Timestamp('1960-04-01 00:00:00',
+                                          freq='QS-JAN'),
+                                periods=f(76),
+                                freq='QS-JAN')
+            assert len(result) == 76
 
     def test_catch_infinite_loop(self):
         offset = offsets.DateOffset(minute=5)
@@ -399,7 +345,7 @@ class TestBusinessDateRange(object):
         assert isinstance(result, DatetimeIndex)
 
     def test_error_with_zero_monthends(self):
-        msg = r'Offset <0 \* MonthEnds> did not increment date'
+        msg = 'Offset <0 \* MonthEnds> did not increment date'
         with tm.assert_raises_regex(ValueError, msg):
             date_range('1/1/2000', '1/1/2001', freq=MonthEnd(0))
 
@@ -481,24 +427,24 @@ class TestBusinessDateRange(object):
         assert dr[0] == start
         assert dr[2] == end
 
-    @pytest.mark.parametrize('freq', ["1D", "3D", "2M", "7W", "3H", "A"])
-    def test_range_closed(self, freq):
+    def test_range_closed(self):
         begin = datetime(2011, 1, 1)
         end = datetime(2014, 1, 1)
 
-        closed = date_range(begin, end, closed=None, freq=freq)
-        left = date_range(begin, end, closed="left", freq=freq)
-        right = date_range(begin, end, closed="right", freq=freq)
-        expected_left = left
-        expected_right = right
+        for freq in ["1D", "3D", "2M", "7W", "3H", "A"]:
+            closed = date_range(begin, end, closed=None, freq=freq)
+            left = date_range(begin, end, closed="left", freq=freq)
+            right = date_range(begin, end, closed="right", freq=freq)
+            expected_left = left
+            expected_right = right
 
-        if end == closed[-1]:
-            expected_left = closed[:-1]
-        if begin == closed[0]:
-            expected_right = closed[1:]
+            if end == closed[-1]:
+                expected_left = closed[:-1]
+            if begin == closed[0]:
+                expected_right = closed[1:]
 
-        tm.assert_index_equal(expected_left, left)
-        tm.assert_index_equal(expected_right, right)
+            tm.assert_index_equal(expected_left, left)
+            tm.assert_index_equal(expected_right, right)
 
     def test_range_closed_with_tz_aware_start_end(self):
         # GH12409, GH12684
@@ -543,28 +489,28 @@ class TestBusinessDateRange(object):
             tm.assert_index_equal(expected_left, left)
             tm.assert_index_equal(expected_right, right)
 
-    @pytest.mark.parametrize('closed', ['right', 'left', None])
-    def test_range_closed_boundary(self, closed):
-        # GH#11804
-        right_boundary = date_range('2015-09-12', '2015-12-01',
-                                    freq='QS-MAR', closed=closed)
-        left_boundary = date_range('2015-09-01', '2015-09-12',
-                                   freq='QS-MAR', closed=closed)
-        both_boundary = date_range('2015-09-01', '2015-12-01',
-                                   freq='QS-MAR', closed=closed)
-        expected_right = expected_left = expected_both = both_boundary
+    def test_range_closed_boundary(self):
+        # GH 11804
+        for closed in ['right', 'left', None]:
+            right_boundary = date_range('2015-09-12', '2015-12-01',
+                                        freq='QS-MAR', closed=closed)
+            left_boundary = date_range('2015-09-01', '2015-09-12',
+                                       freq='QS-MAR', closed=closed)
+            both_boundary = date_range('2015-09-01', '2015-12-01',
+                                       freq='QS-MAR', closed=closed)
+            expected_right = expected_left = expected_both = both_boundary
 
-        if closed == 'right':
-            expected_left = both_boundary[1:]
-        if closed == 'left':
-            expected_right = both_boundary[:-1]
-        if closed is None:
-            expected_right = both_boundary[1:]
-            expected_left = both_boundary[:-1]
+            if closed == 'right':
+                expected_left = both_boundary[1:]
+            if closed == 'left':
+                expected_right = both_boundary[:-1]
+            if closed is None:
+                expected_right = both_boundary[1:]
+                expected_left = both_boundary[:-1]
 
-        tm.assert_index_equal(right_boundary, expected_right)
-        tm.assert_index_equal(left_boundary, expected_left)
-        tm.assert_index_equal(both_boundary, expected_both)
+            tm.assert_index_equal(right_boundary, expected_right)
+            tm.assert_index_equal(left_boundary, expected_left)
+            tm.assert_index_equal(both_boundary, expected_both)
 
     def test_years_only(self):
         # GH 6961

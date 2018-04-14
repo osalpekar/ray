@@ -8,7 +8,8 @@ import numpy as np
 
 import pandas as pd
 from pandas.compat import lrange, StringIO
-from pandas import Series, DataFrame, Timestamp, date_range, MultiIndex, Index
+from pandas import (Series, DataFrame, Timestamp,
+                    date_range, MultiIndex)
 from pandas.util import testing as tm
 from pandas.tests.indexing.common import Base
 
@@ -17,7 +18,7 @@ class TestLoc(Base):
 
     def test_loc_getitem_dups(self):
         # GH 5678
-        # repeated gettitems on a dup index returning a ndarray
+        # repeated gettitems on a dup index returing a ndarray
         df = DataFrame(
             np.random.random_sample((20, 5)),
             index=['ABCDE' [x % 5] for x in range(20)])
@@ -164,13 +165,13 @@ class TestLoc(Base):
                           typs=['ints', 'uints'], axes=2, fails=KeyError)
 
     def test_getitem_label_list_with_missing(self):
-        s = Series(range(3), index=['a', 'b', 'c'])
+        s = pd.Series(range(3), index=['a', 'b', 'c'])
 
         # consistency
         with tm.assert_produces_warning(FutureWarning, check_stacklevel=False):
             s[['a', 'd']]
 
-        s = Series(range(3))
+        s = pd.Series(range(3))
         with tm.assert_produces_warning(FutureWarning, check_stacklevel=False):
             s[[0, 3]]
 
@@ -385,7 +386,7 @@ class TestLoc(Base):
 
     def test_loc_setitem_consistency(self):
         # GH 6149
-        # coerce similarly for setitem and loc when rows have a null-slice
+        # coerce similary for setitem and loc when rows have a null-slice
         expected = DataFrame({'date': Series(0, index=range(5),
                                              dtype=np.int64),
                               'val': Series(range(5), dtype=np.int64)})
@@ -418,13 +419,6 @@ class TestLoc(Base):
         df = DataFrame({'date': date_range('2000-01-01', '2000-01-5'),
                         'val': Series(range(5), dtype=np.int64)})
         df.loc[:, 'date'] = 1.0
-        tm.assert_frame_equal(df, expected)
-
-        # GH 15494
-        # setting on frame with single row
-        df = DataFrame({'date': Series([Timestamp('20180101')])})
-        df.loc[:, 'date'] = 'string'
-        expected = DataFrame({'date': Series(['string'])})
         tm.assert_frame_equal(df, expected)
 
     def test_loc_setitem_consistency_empty(self):
@@ -558,7 +552,7 @@ Region_1,Site_2,3977723089,A,5/20/2015 8:33,5/20/2015 9:09,Yes,No"""
     def test_loc_coerceion(self):
 
         # 12411
-        df = DataFrame({'date': [Timestamp('20130101').tz_localize('UTC'),
+        df = DataFrame({'date': [pd.Timestamp('20130101').tz_localize('UTC'),
                                  pd.NaT]})
         expected = df.dtypes
 
@@ -595,7 +589,7 @@ Region_1,Site_2,3977723089,A,5/20/2015 8:33,5/20/2015 9:09,Yes,No"""
         # non-unique indexer with loc slice
         # https://groups.google.com/forum/?fromgroups#!topic/pydata/zTm2No0crYs
 
-        # these are going to raise because the we are non monotonic
+        # these are going to raise becuase the we are non monotonic
         df = DataFrame({'A': [1, 2, 3, 4, 5, 6],
                         'B': [3, 4, 5, 6, 7, 8]}, index=[0, 1, 0, 1, 2, 3])
         pytest.raises(KeyError, df.loc.__getitem__,
@@ -711,44 +705,3 @@ Region_1,Site_2,3977723089,A,5/20/2015 8:33,5/20/2015 9:09,Yes,No"""
 
         original_series[:3] = [7, 8, 9]
         assert all(sliced_series[:3] == [7, 8, 9])
-
-    @pytest.mark.parametrize(
-        'indexer_type_1',
-        (list, tuple, set, slice, np.ndarray, Series, Index))
-    @pytest.mark.parametrize(
-        'indexer_type_2',
-        (list, tuple, set, slice, np.ndarray, Series, Index))
-    def test_loc_getitem_nested_indexer(self, indexer_type_1, indexer_type_2):
-        # GH #19686
-        # .loc should work with nested indexers which can be
-        # any list-like objects (see `pandas.api.types.is_list_like`) or slices
-
-        def convert_nested_indexer(indexer_type, keys):
-            if indexer_type == np.ndarray:
-                return np.array(keys)
-            if indexer_type == slice:
-                return slice(*keys)
-            return indexer_type(keys)
-
-        a = [10, 20, 30]
-        b = [1, 2, 3]
-        index = pd.MultiIndex.from_product([a, b])
-        df = pd.DataFrame(
-            np.arange(len(index), dtype='int64'),
-            index=index, columns=['Data'])
-
-        keys = ([10, 20], [2, 3])
-        types = (indexer_type_1, indexer_type_2)
-
-        # check indexers with all the combinations of nested objects
-        # of all the valid types
-        indexer = tuple(
-            convert_nested_indexer(indexer_type, k)
-            for indexer_type, k in zip(types, keys))
-
-        result = df.loc[indexer, 'Data']
-        expected = pd.Series(
-            [1, 2, 4, 5], name='Data',
-            index=pd.MultiIndex.from_product(keys))
-
-        tm.assert_series_equal(result, expected)

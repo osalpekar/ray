@@ -10,11 +10,10 @@ from numpy import nan
 import numpy as np
 import pytest
 
+from pandas import (DataFrame, compat, option_context)
 from pandas.compat import StringIO, lrange, u, PYPY
 import pandas.io.formats.format as fmt
 import ray.dataframe as pd
-from pandas import (DataFrame, Series, compat, option_context,
-                    date_range, period_range, Categorical)
 
 import pandas.util.testing as tm
 
@@ -172,8 +171,8 @@ class TestDataFrameReprInfoEtc(TestData):
                                       'the CSV file externally. I want to Call'
                                       ' the File through the code..')})
 
-        with option_context('display.max_columns', 20):
-            assert 'StringCol' in repr(df)
+        result = repr(df)
+        assert 'StringCol' in result
 
     def test_latex_repr(self):
         result = r"""\begin{tabular}{llll}
@@ -307,7 +306,7 @@ class TestDataFrameReprInfoEtc(TestData):
         res = buf.getvalue().splitlines()
         assert "memory usage: " in res[-1]
 
-        # do not display memory usage case
+        # do not display memory usage cas
         df.info(buf=buf, memory_usage=False)
         res = buf.getvalue().splitlines()
         assert "memory usage: " not in res[-1]
@@ -362,7 +361,7 @@ class TestDataFrameReprInfoEtc(TestData):
                   ).index.nbytes
         df = DataFrame(
             data=1,
-            index=MultiIndex.from_product(
+            index=pd.MultiIndex.from_product(
                 [['a'], range(1000)]),
             columns=['A']
         )
@@ -403,7 +402,7 @@ class TestDataFrameReprInfoEtc(TestData):
     def test_usage_via_getsizeof(self):
         df = DataFrame(
             data=1,
-            index=MultiIndex.from_product(
+            index=pd.MultiIndex.from_product(
                 [['a'], range(1000)]),
             columns=['A']
         )
@@ -429,14 +428,14 @@ class TestDataFrameReprInfoEtc(TestData):
 
         buf = StringIO()
         df = DataFrame(1, columns=list('ab'),
-                       index=MultiIndex.from_product(
+                       index=pd.MultiIndex.from_product(
                            [range(3), range(3)]))
         df.info(buf=buf)
         assert '+' not in buf.getvalue()
 
         buf = StringIO()
         df = DataFrame(1, columns=list('ab'),
-                       index=MultiIndex.from_product(
+                       index=pd.MultiIndex.from_product(
                            [range(3), ['foo', 'bar']]))
         df.info(buf=buf)
         assert '+' in buf.getvalue()
@@ -452,10 +451,10 @@ class TestDataFrameReprInfoEtc(TestData):
 
         N = 100
         M = len(uppercase)
-        index = MultiIndex.from_product([list(uppercase),
-                                         date_range('20160101',
-                                                    periods=N)],
-                                        names=['id', 'date'])
+        index = pd.MultiIndex.from_product([list(uppercase),
+                                            pd.date_range('20160101',
+                                                          periods=N)],
+                                           names=['id', 'date'])
         df = DataFrame({'value': np.random.randn(N * M)}, index=index)
 
         unstacked = df.unstack('id')
@@ -467,39 +466,8 @@ class TestDataFrameReprInfoEtc(TestData):
 
     def test_info_categorical(self):
         # GH14298
-        idx = CategoricalIndex(['a', 'b'])
+        idx = pd.CategoricalIndex(['a', 'b'])
         df = pd.DataFrame(np.zeros((2, 2)), index=idx, columns=idx)
 
         buf = StringIO()
         df.info(buf=buf)
-
-    def test_info_categorical_column(self):
-
-        # make sure it works
-        n = 2500
-        df = DataFrame({'int64': np.random.randint(100, size=n)})
-        df['category'] = Series(np.array(list('abcdefghij')).take(
-            np.random.randint(0, 10, size=n))).astype('category')
-        df.isna()
-        buf = StringIO()
-        df.info(buf=buf)
-
-        df2 = df[df['category'] == 'd']
-        buf = compat.StringIO()
-        df2.info(buf=buf)
-
-    def test_repr_categorical_dates_periods(self):
-        # normal DataFrame
-        dt = date_range('2011-01-01 09:00', freq='H', periods=5,
-                        tz='US/Eastern')
-        p = period_range('2011-01', freq='M', periods=5)
-        df = DataFrame({'dt': dt, 'p': p})
-        exp = """                         dt       p
-0 2011-01-01 09:00:00-05:00 2011-01
-1 2011-01-01 10:00:00-05:00 2011-02
-2 2011-01-01 11:00:00-05:00 2011-03
-3 2011-01-01 12:00:00-05:00 2011-04
-4 2011-01-01 13:00:00-05:00 2011-05"""
-
-        df = DataFrame({'dt': Categorical(dt), 'p': Categorical(p)})
-        assert repr(df) == exp

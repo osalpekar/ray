@@ -4,9 +4,10 @@
 import datetime as dt
 import os
 import struct
+import sys
 import warnings
 from datetime import datetime
-from collections import OrderedDict
+from distutils.version import LooseVersion
 
 import numpy as np
 import pandas as pd
@@ -142,6 +143,8 @@ class TestStata(object):
         tm.assert_frame_equal(parsed, expected)
 
     def test_read_dta2(self):
+        if LooseVersion(sys.version) < '2.7':
+            pytest.skip('datetime interp under 2.6 is faulty')
 
         expected = DataFrame.from_records(
             [
@@ -332,7 +335,7 @@ class TestStata(object):
         with tm.ensure_clean() as path:
             original.to_stata(path, {'datetime': 'tc'})
             written_and_read_again = self.read_dta(path)
-            # original.index is np.int32, read index is np.int64
+            # original.index is np.int32, readed index is np.int64
             tm.assert_frame_equal(written_and_read_again.set_index('index'),
                                   original, check_index_type=False)
 
@@ -585,19 +588,9 @@ class TestStata(object):
         df0['psch_dis'] = df0["psch_dis"].astype(np.float32)
         tm.assert_frame_equal(df.head(3), df0)
 
-    def test_value_labels_old_format(self):
-        # GH 19417
-        #
-        # Test that value_labels() returns an empty dict if the file format
-        # predates supporting value labels.
-        dpath = os.path.join(self.dirpath, 'S4_EDUC1.dta')
-        reader = StataReader(dpath)
-        assert reader.value_labels() == {}
-        reader.close()
-
     def test_date_export_formats(self):
         columns = ['tc', 'td', 'tw', 'tm', 'tq', 'th', 'ty']
-        conversions = {c: c for c in columns}
+        conversions = dict(((c, c) for c in columns))
         data = [datetime(2006, 11, 20, 23, 13, 20)] * len(columns)
         original = DataFrame([data], columns=columns)
         original.index.name = 'index'
@@ -781,7 +774,7 @@ class TestStata(object):
         tm.assert_frame_equal(expected, parsed_117,
                               check_datetimelike_compat=True)
 
-        date_conversion = {c: c[-2:] for c in columns}
+        date_conversion = dict((c, c[-2:]) for c in columns)
         # {c : c[-2:] for c in columns}
         with tm.ensure_clean() as path:
             expected.index.name = 'index'
@@ -952,7 +945,7 @@ class TestStata(object):
                 cols.append((col, pd.Categorical.from_codes(codes, labels)))
             else:
                 cols.append((col, pd.Series(labels, dtype=np.float32)))
-        expected = DataFrame.from_dict(OrderedDict(cols))
+        expected = DataFrame.from_items(cols)
 
         # Read with and with out categoricals, ensure order is identical
         file = getattr(self, file)

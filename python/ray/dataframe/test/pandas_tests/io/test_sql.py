@@ -1665,29 +1665,6 @@ class _TestSQLAlchemy(SQLAlchemyMixIn, PandasSQLTest):
 
         tm.assert_frame_equal(df, expected)
 
-    def test_insert_multivalues(self):
-        # issues addressed
-        # https://github.com/pandas-dev/pandas/issues/14315
-        # https://github.com/pandas-dev/pandas/issues/8953
-
-        db = sql.SQLDatabase(self.conn)
-        df = DataFrame({'A': [1, 0, 0], 'B': [1.1, 0.2, 4.3]})
-        table = sql.SQLTable("test_table", db, frame=df)
-        data = [
-            {'A': 1, 'B': 0.46},
-            {'A': 0, 'B': -2.06}
-        ]
-        statement = table.insert_statement(data, conn=self.conn)[0]
-
-        if self.supports_multivalues_insert:
-            assert statement.parameters == data, (
-                'insert statement should be multivalues'
-            )
-        else:
-            assert statement.parameters is None, (
-                'insert statement should not be multivalues'
-            )
-
 
 class _TestSQLAlchemyConn(_EngineToConnMixin, _TestSQLAlchemy):
 
@@ -1702,7 +1679,6 @@ class _TestSQLiteAlchemy(object):
 
     """
     flavor = 'sqlite'
-    supports_multivalues_insert = True
 
     @classmethod
     def connect(cls):
@@ -1751,21 +1727,17 @@ class _TestMySQLAlchemy(object):
 
     """
     flavor = 'mysql'
-    supports_multivalues_insert = True
 
     @classmethod
     def connect(cls):
         url = 'mysql+{driver}://root@localhost/pandas_nosetest'
-        return sqlalchemy.create_engine(url.format(driver=cls.driver),
-                                        connect_args=cls.connect_args)
+        return sqlalchemy.create_engine(url.format(driver=cls.driver))
 
     @classmethod
     def setup_driver(cls):
         try:
             import pymysql  # noqa
             cls.driver = 'pymysql'
-            from pymysql.constants import CLIENT
-            cls.connect_args = {'client_flag': CLIENT.MULTI_STATEMENTS}
         except ImportError:
             pytest.skip('pymysql not installed')
 
@@ -1821,7 +1793,6 @@ class _TestPostgreSQLAlchemy(object):
 
     """
     flavor = 'postgresql'
-    supports_multivalues_insert = True
 
     @classmethod
     def connect(cls):
@@ -2300,8 +2271,8 @@ class TestXSQLite(SQLiteMixIn):
         sql.to_sql(mono_df, con=self.conn, name='mono_df', index=False)
         # computing the sum via sql
         con_x = self.conn
-        the_sum = sum(my_c0[0]
-                      for my_c0 in con_x.execute("select * from mono_df"))
+        the_sum = sum([my_c0[0]
+                       for my_c0 in con_x.execute("select * from mono_df")])
         # it should not fail, and gives 3 ( Issue #3628 )
         assert the_sum == 3
 
@@ -2360,6 +2331,31 @@ class TestXSQLite(SQLiteMixIn):
         assert (tquery(sql_select, con=self.conn) ==
                 [(1, 'A'), (2, 'B'), (3, 'C'), (4, 'D'), (5, 'E')])
         clean_up(table_name)
+
+
+@pytest.mark.single
+class TestSQLFlavorDeprecation(object):
+    """
+    gh-13611: test that the 'flavor' parameter
+    is appropriately deprecated by checking the
+    functions that directly raise the warning
+    """
+
+    con = 1234  # don't need real connection for this
+    funcs = ['SQLiteDatabase', 'pandasSQL_builder']
+
+    def test_unsupported_flavor(self):
+        msg = 'is not supported'
+
+        for func in self.funcs:
+            tm.assert_raises_regex(ValueError, msg, getattr(sql, func),
+                                   self.con, flavor='mysql')
+
+    def test_deprecated_flavor(self):
+        for func in self.funcs:
+            with tm.assert_produces_warning(FutureWarning,
+                                            check_stacklevel=False):
+                getattr(sql, func)(self.con, flavor='sqlite')
 
 
 @pytest.mark.single
