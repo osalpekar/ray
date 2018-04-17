@@ -6,8 +6,8 @@ from __future__ import print_function
 import pytest
 import numpy as np
 
-from pandas import (DataFrame, Series, Timestamp, _np_version_under1p11)
-import pandas as pd
+from ray.dataframe import (DataFrame, Series, Timestamp, _np_version_under1p11)
+import ray.dataframe as pd
 
 from pandas.util.testing import assert_series_equal, assert_frame_equal
 

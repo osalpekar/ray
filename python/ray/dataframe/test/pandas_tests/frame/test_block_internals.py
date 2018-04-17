@@ -10,10 +10,10 @@ import itertools
 from numpy import nan
 import numpy as np
 
-from pandas import (DataFrame, Series, Timestamp, date_range, compat,
+from ray.dataframe import (DataFrame, Series, Timestamp, date_range, compat,
                     option_context)
 from pandas.compat import StringIO
-import pandas as pd
+import ray.dataframe as pd
 
 from pandas.util.testing import (assert_almost_equal,
                                  assert_series_equal,

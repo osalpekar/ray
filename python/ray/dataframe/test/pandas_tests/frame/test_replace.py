@@ -8,9 +8,9 @@ from datetime import datetime
 import re
 
 from pandas.compat import (zip, range, lrange, StringIO)
-from pandas import (DataFrame, Series, Index, date_range, compat,
+from ray.dataframe import (DataFrame, Series, Index, date_range, compat,
                     Timestamp)
-import pandas as pd
+import ray.dataframe as pd
 
 from numpy import nan
 import numpy as np

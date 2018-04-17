@@ -11,9 +11,9 @@ import numpy as np
 from pandas.compat import (lmap, range, lrange, StringIO, u)
 from pandas.core.common import _all_none
 from pandas.errors import ParserError
-from pandas import (DataFrame, Index, Series, MultiIndex, Timestamp,
+from ray.dataframe import (DataFrame, Index, Series, MultiIndex, Timestamp,
                     date_range, read_csv, compat, to_datetime)
-import pandas as pd
+import ray.dataframe as pd
 
 from pandas.util.testing import (assert_almost_equal,
                                  assert_series_equal,

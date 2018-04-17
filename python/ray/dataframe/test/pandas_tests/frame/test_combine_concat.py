@@ -7,9 +7,9 @@ from datetime import datetime
 import numpy as np
 from numpy import nan
 
-import pandas as pd
+import ray.dataframe as pd
 
-from pandas import DataFrame, Index, Series, Timestamp, date_range
+from ray.dataframe import DataFrame, Index, Series, Timestamp, date_range
 from pandas.compat import lrange
 
 from pandas.tests.frame.common import TestData

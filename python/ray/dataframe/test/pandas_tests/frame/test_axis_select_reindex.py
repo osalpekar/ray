@@ -10,9 +10,9 @@ from numpy import random
 import numpy as np
 
 from pandas.compat import lrange, lzip, u
-from pandas import (compat, DataFrame, Series, Index, MultiIndex,
+from ray.dataframe import (compat, DataFrame, Series, Index, MultiIndex,
                     date_range, isna)
-import pandas as pd
+import ray.dataframe as pd
 
 from pandas.util.testing import assert_frame_equal
 

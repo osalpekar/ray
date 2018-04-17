@@ -7,9 +7,9 @@ import pytz
 import collections
 import numpy as np
 
-from pandas import compat
+from ray.dataframe import compat
 from pandas.compat import long
-from pandas import (DataFrame, Series, MultiIndex, Timestamp,
+from ray.dataframe import (DataFrame, Series, MultiIndex, Timestamp,
                     date_range)
 
 import pandas.util.testing as tm

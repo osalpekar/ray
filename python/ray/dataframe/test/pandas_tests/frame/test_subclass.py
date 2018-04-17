@@ -5,8 +5,8 @@ from __future__ import print_function
 from warnings import catch_warnings
 import numpy as np
 
-from pandas import DataFrame, Series, MultiIndex, Panel
-import pandas as pd
+from ray.dataframe import DataFrame, Series, MultiIndex, Panel
+import ray.dataframe as pd
 import pandas.util.testing as tm
 
 from pandas.tests.frame.common import TestData

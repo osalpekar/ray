@@ -9,9 +9,9 @@ from datetime import datetime
 import warnings
 import numpy as np
 
-from pandas import (notna, DataFrame, Series, MultiIndex, date_range,
+from ray.dataframe import (notna, DataFrame, Series, MultiIndex, date_range,
                     Timestamp, compat)
-import pandas as pd
+import ray.dataframe as pd
 from pandas.core.dtypes.dtypes import CategoricalDtype
 from pandas.util.testing import (assert_series_equal,
                                  assert_frame_equal)

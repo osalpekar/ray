@@ -10,14 +10,14 @@ from datetime import datetime, timedelta
 import numpy as np
 
 from pandas.compat import lrange, PY2
-from pandas import (DataFrame, Series, Index, MultiIndex,
+from ray.dataframe import (DataFrame, Series, Index, MultiIndex,
                     RangeIndex, date_range, IntervalIndex,
                     to_datetime)
 from pandas.core.dtypes.common import (
     is_object_dtype,
     is_categorical_dtype,
     is_interval_dtype)
-import pandas as pd
+import ray.dataframe as pd
 
 from pandas.util.testing import assert_series_equal, assert_frame_equal
 

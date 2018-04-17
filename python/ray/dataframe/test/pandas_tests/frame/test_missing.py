@@ -9,9 +9,9 @@ from numpy import nan, random
 import numpy as np
 
 from pandas.compat import lrange
-from pandas import (DataFrame, Series, Timestamp,
+from ray.dataframe import (DataFrame, Series, Timestamp,
                     date_range)
-import pandas as pd
+import ray.dataframe as pd
 
 from pandas.util.testing import assert_series_equal, assert_frame_equal
 

@@ -13,9 +13,9 @@ from numpy import nan
 import numpy as np
 
 from pandas.compat import u
-from pandas import (DataFrame, Index, Series, MultiIndex, date_range,
+from ray.dataframe import (DataFrame, Index, Series, MultiIndex, date_range,
                     Timedelta, Period)
-import pandas as pd
+import ray.dataframe as pd
 
 from pandas.util.testing import assert_series_equal, assert_frame_equal
 

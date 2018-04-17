@@ -10,13 +10,13 @@ import sys
 from distutils.version import LooseVersion
 
 from pandas.compat import range, lrange, long
-from pandas import compat
+from ray.dataframe import compat
 
 from numpy.random import randn
 import numpy as np
 
-from pandas import DataFrame, Series, date_range, timedelta_range
-import pandas as pd
+from ray.dataframe import DataFrame, Series, date_range, timedelta_range
+import ray.dataframe as pd
 
 from pandas.util.testing import (assert_almost_equal,
                                  assert_series_equal,

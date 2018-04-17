@@ -6,7 +6,7 @@ from warnings import catch_warnings
 from datetime import datetime, date, timedelta, time
 
 from pandas.compat import map, zip, range, lrange, lzip, long
-from pandas import compat
+from ray.dataframe import compat
 
 from numpy import nan
 from numpy.random import randn
@@ -15,10 +15,10 @@ import pytest
 import numpy as np
 
 import pandas.core.common as com
-from pandas import (DataFrame, Index, Series, notna, isna,
+from ray.dataframe import (DataFrame, Index, Series, notna, isna,
                     MultiIndex, DatetimeIndex, Timestamp,
                     date_range)
-import pandas as pd
+import ray.dataframe as pd
 
 from pandas._libs.tslib import iNaT
 from pandas.tseries.offsets import BDay

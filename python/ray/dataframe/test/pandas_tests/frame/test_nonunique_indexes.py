@@ -6,8 +6,8 @@ import pytest
 import numpy as np
 
 from pandas.compat import lrange, u
-from pandas import DataFrame, Series, MultiIndex, date_range
-import pandas as pd
+from ray.dataframe import DataFrame, Series, MultiIndex, date_range
+import ray.dataframe as pd
 
 from pandas.util.testing import assert_series_equal, assert_frame_equal
 

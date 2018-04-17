@@ -1,4 +1,4 @@
-from pandas.core.frame import DataFrame
+from ray.dataframe import DataFrame
 
 import pytest
 import pandas.util.testing as tm

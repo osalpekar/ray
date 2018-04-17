@@ -1,7 +1,7 @@
 # coding=utf-8
 
 import numpy as np
-from pandas import (DataFrame, date_range, Timestamp, Series,
+from ray.dataframe import (DataFrame, date_range, Timestamp, Series,
                     to_datetime)
 
 import pandas.util.testing as tm

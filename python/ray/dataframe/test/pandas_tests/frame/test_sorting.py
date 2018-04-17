@@ -6,10 +6,10 @@ import pytest
 import random
 import numpy as np
 
-import pandas as pd
+import ray.dataframe as pd
 from pandas.compat import lrange
 from pandas.api.types import CategoricalDtype
-from pandas import (DataFrame, Series, MultiIndex, Timestamp,
+from ray.dataframe import (DataFrame, Series, MultiIndex, Timestamp,
                     date_range, NaT, IntervalIndex)
 
 from pandas.util.testing import assert_series_equal, assert_frame_equal

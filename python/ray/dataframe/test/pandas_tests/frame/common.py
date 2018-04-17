@@ -1,9 +1,9 @@
 import numpy as np
 
-from pandas import compat
+from ray.dataframe import compat
 from pandas.util._decorators import cache_readonly
 import pandas.util.testing as tm
-import pandas as pd
+import ray.dataframe as pd
 
 _seriesd = tm.getSeriesData()
 _tsd = tm.getTimeSeriesData()

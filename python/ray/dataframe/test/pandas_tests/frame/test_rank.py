@@ -5,7 +5,7 @@ from distutils.version import LooseVersion
 from numpy import nan
 import numpy as np
 
-from pandas import Series, DataFrame
+from ray.dataframe import Series, DataFrame
 
 from pandas.compat import product
 from pandas.util.testing import assert_frame_equal

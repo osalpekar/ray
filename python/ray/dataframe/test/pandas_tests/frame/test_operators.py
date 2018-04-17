@@ -11,12 +11,12 @@ from numpy import nan, random
 import numpy as np
 
 from pandas.compat import lrange, range
-from pandas import compat
-from pandas import (DataFrame, Series, MultiIndex, Timestamp,
+from ray.dataframe import compat
+from ray.dataframe import (DataFrame, Series, MultiIndex, Timestamp,
                     date_range)
 import pandas.core.common as com
 import pandas.io.formats.printing as printing
-import pandas as pd
+import ray.dataframe as pd
 
 from pandas.util.testing import (assert_numpy_array_equal,
                                  assert_series_equal,

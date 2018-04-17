@@ -14,9 +14,9 @@ from numpy.random import randn
 import numpy as np
 
 from pandas.compat import lrange, product
-from pandas import (compat, isna, notna, DataFrame, Series,
+from ray.dataframe import (compat, isna, notna, DataFrame, Series,
                     MultiIndex, date_range, Timestamp)
-import pandas as pd
+import ray.dataframe as pd
 import pandas.core.nanops as nanops
 import pandas.core.algorithms as algorithms
 import pandas.io.formats.printing as printing

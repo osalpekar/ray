@@ -10,7 +10,7 @@ from numpy import nan
 import numpy as np
 import pytest
 
-from pandas import (DataFrame, compat, option_context)
+from ray.dataframe import (DataFrame, compat, option_context)
 from pandas.compat import StringIO, lrange, u, PYPY
 import pandas.io.formats.format as fmt
 import ray.dataframe as pd

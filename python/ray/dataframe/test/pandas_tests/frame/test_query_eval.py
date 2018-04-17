@@ -6,8 +6,8 @@ import operator
 import pytest
 
 from pandas.compat import (zip, range, lrange, StringIO)
-from pandas import DataFrame, Series, Index, MultiIndex, date_range
-import pandas as pd
+from ray.dataframe import DataFrame, Series, Index, MultiIndex, date_range
+import ray.dataframe as pd
 import numpy as np
 
 from numpy.random import randn

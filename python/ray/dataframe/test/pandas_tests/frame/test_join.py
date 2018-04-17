@@ -3,7 +3,7 @@
 import pytest
 import numpy as np
 
-from pandas import DataFrame, Index, PeriodIndex
+from ray.dataframe import DataFrame, Index, PeriodIndex
 from pandas.tests.frame.common import TestData
 import pandas.util.testing as tm
 

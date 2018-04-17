@@ -2,9 +2,9 @@ import numpy as np
 from numpy.random import randn
 from datetime import timedelta
 
-import pandas as pd
+import ray.dataframe as pd
 import pandas.util.testing as tm
-from pandas import (PeriodIndex, period_range, DataFrame, date_range,
+from ray.dataframe import (PeriodIndex, period_range, DataFrame, date_range,
                     Index, to_datetime, DatetimeIndex)
 
 

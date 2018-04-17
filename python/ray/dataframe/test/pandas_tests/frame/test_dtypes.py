@@ -7,7 +7,7 @@ import pytest
 from datetime import timedelta
 
 import numpy as np
-from pandas import (DataFrame, Series, date_range, Timedelta, Timestamp,
+from ray.dataframe import (DataFrame, Series, date_range, Timedelta, Timestamp,
                     compat, concat, option_context)
 from pandas.compat import u
 from pandas import _np_version_under1p14
@@ -18,7 +18,7 @@ from pandas.util.testing import (assert_series_equal,
                                  assert_frame_equal,
                                  makeCustomDataframe as mkdf)
 import pandas.util.testing as tm
-import pandas as pd
+import ray.dataframe as pd
 
 
 class TestDataFrameDataTypes(TestData):

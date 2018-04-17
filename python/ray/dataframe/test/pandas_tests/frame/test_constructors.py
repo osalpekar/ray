@@ -16,11 +16,11 @@ import numpy.ma.mrecords as mrecords
 from pandas.core.dtypes.common import is_integer_dtype
 from pandas.compat import (lmap, long, zip, range, lrange, lzip,
                            OrderedDict, is_platform_little_endian)
-from pandas import compat
-from pandas import (DataFrame, Index, Series, isna,
+from ray.dataframe import compat
+from ray.dataframe import (DataFrame, Index, Series, isna,
                     MultiIndex, Timedelta, Timestamp,
                     date_range)
-import pandas as pd
+import ray.dataframe as pd
 import pandas._libs.lib as lib
 import pandas.util.testing as tm
 

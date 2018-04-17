@@ -10,10 +10,10 @@ from numpy import nan
 from numpy.random import randn
 import numpy as np
 
-from pandas import (DataFrame, Series, Index,
+from ray.dataframe import (DataFrame, Series, Index,
                     Timestamp, DatetimeIndex,
                     to_datetime, date_range)
-import pandas as pd
+import ray.dataframe as pd
 import pandas.tseries.offsets as offsets
 
 from pandas.util.testing import assert_series_equal, assert_frame_equal
