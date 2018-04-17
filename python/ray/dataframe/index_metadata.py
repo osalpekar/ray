@@ -52,7 +52,7 @@ class _IndexMetadataBase(object):
     index = property(_get_index, _set_index)
 
     def coords_of(self, key):
-        raise NotImplementedError()
+        self._coord_df.loc[key]
 
     def __getitem__(self, key):
         return self.coords_of(key)
