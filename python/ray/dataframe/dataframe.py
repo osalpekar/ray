@@ -1094,9 +1094,19 @@ class DataFrame(object):
 
     def clip(self, lower=None, upper=None, axis=None, inplace=False, *args,
              **kwargs):
-        raise NotImplementedError(
-            "To contribute to Pandas on Ray, please visit "
-            "github.com/ray-project/ray.")
+        if is_list_like(lower) or is_list_like(upper):
+            # do something
+            pass
+        else:
+            new_blocks = np.array([_map_partitions(lambda df: df.clip(lower, 
+                                                            upper, 
+                                                            axis),
+                                         block) for block in
+                                         self._block_partitions])
+            if inplace:
+                self._update_inplace(block_partitions=new_blocks, columns=columns)
+            else:
+                return DataFrame(block_partitions=new_blocks, columns=self.columns) 
 
     def clip_lower(self, threshold, axis=None, inplace=False):
         raise NotImplementedError(
